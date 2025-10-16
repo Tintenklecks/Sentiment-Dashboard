@@ -1,8 +1,9 @@
 import { TrendingUp, TrendingDown, Minus, ArrowUp, ArrowDown, ArrowRight, LineChart } from 'lucide-react';
-import type { TradingSignal } from '../types';
+import type { TradingSignal, SentimentRecord } from '../types';
 
 interface Props {
   signals: Record<string, TradingSignal>;
+  records: SentimentRecord[];
   timeRange: { type: 'days' | 'hours', value: number };
 }
 
@@ -50,7 +51,34 @@ const StrengthBar = ({ strength }: { strength: number }) => {
   );
 };
 
-export const TradingSignals = ({ signals, timeRange }: Props) => {
+export const TradingSignals = ({ signals, records, timeRange }: Props) => {
+  // Get the most recent mention date and sentiment for a symbol
+  const getLastMentionInfo = (symbol: string): { dateText: string; sentiment: number } => {
+    const symbolRecords = records.filter(r => r.symbol === symbol);
+    if (symbolRecords.length === 0) return { dateText: '', sentiment: 0 };
+    
+    const mostRecent = symbolRecords.reduce((latest, current) => {
+      return new Date(current.date) > new Date(latest.date) ? current : latest;
+    });
+    
+    const date = new Date(mostRecent.date);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    let dateText = '';
+    // Format relative time
+    if (diffMins < 1) dateText = 'Just now';
+    else if (diffMins < 60) dateText = `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+    else if (diffHours < 24) dateText = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    else if (diffDays < 7) dateText = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    else dateText = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    
+    return { dateText, sentiment: mostRecent.sentiment };
+  };
+  
   // Calculate Unix timestamp for TradingView link
   const getUnixTimestamp = () => {
     const now = Math.floor(Date.now() / 1000); // Current time in seconds
@@ -60,11 +88,28 @@ export const TradingSignals = ({ signals, timeRange }: Props) => {
     return now - secondsToSubtract;
   };
   
+  // Calculate appropriate interval based on timespan
+  const getTotalHours = () => {
+    return timeRange.type === 'hours' ? timeRange.value : timeRange.value * 24;
+  };
+
+  const interval = (() => {
+    const totalHours = getTotalHours();
+    
+    if (totalHours <= 3) return '1';        // 1 minute for up to 3 hours
+    if (totalHours <= 6) return '5';        // 5 minutes for up to 6 hours
+    if (totalHours <= 12) return '15';      // 15 minutes for up to 12 hours
+    if (totalHours <= 24) return '60';      // 1 hour for up to 24 hours
+    if (totalHours <= 72) return '240';     // 4 hours for up to 3 days
+    if (totalHours <= 168) return 'D';      // Daily for up to 7 days
+    return 'W';                              // Weekly for longer periods
+  })();
+  
   // Generate TradingView URL for a coin
   const getTradingViewUrl = (symbol: string) => {
     const timestamp = getUnixTimestamp();
     const pair = `BINANCE:${symbol}USDT`;
-    return `https://www.tradingview.com/chart/xyeQ2hIE/?symbol=${encodeURIComponent(pair)}&interval=D&time=${timestamp}`;
+    return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(pair)}&interval=${interval}&time=${timestamp}`;
   };
   // Group signals by type
   const strongBuys = Object.values(signals).filter(s => s.signal === 'STRONG BUY');
@@ -101,16 +146,28 @@ export const TradingSignals = ({ signals, timeRange }: Props) => {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="mb-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold text-white">{item.symbol}</span>
-                        <span className="text-xs text-gray-400">{item.coin_name}</span>
+                    <div className="flex items-start justify-between mb-1">
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-bold text-white">{item.symbol}</span>
+                          <span className="text-xs text-gray-400">{item.coin_name}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                          <span>Last mentioned {getLastMentionInfo(item.symbol).dateText}</span>
+                          {getLastMentionInfo(item.symbol).sentiment > 0 ? (
+                            <ArrowUp className="w-3 h-3 text-green-400" />
+                          ) : getLastMentionInfo(item.symbol).sentiment < 0 ? (
+                            <ArrowDown className="w-3 h-3 text-red-400" />
+                          ) : (
+                            <ArrowRight className="w-3 h-3 text-gray-400" />
+                          )}
+                        </div>
                       </div>
                       <a
                         href={getTradingViewUrl(item.symbol)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-3 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg hover:from-blue-500/30 hover:to-purple-500/30 transition-colors flex items-center justify-center"
+                        className="p-3 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg hover:from-blue-500/30 hover:to-purple-500/30 transition-colors flex items-center justify-center flex-shrink-0"
                         title="View on TradingView"
                       >
                         <LineChart className="w-6 h-6 text-blue-400" />

@@ -6,13 +6,28 @@ import { SentimentTrends } from './charts/SentimentTrends';
 import { SentimentDistribution } from './charts/SentimentDistribution';
 import { MentionScatter } from './charts/MentionScatter';
 import { Activity, TrendingUp, Coins, BarChart3, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+const STORAGE_KEY = 'sentiment-dashboard-timerange';
 
 export const Dashboard = () => {
-  const [timeRange, setTimeRange] = useState<{ type: 'days' | 'hours', value: number }>({ 
-    type: 'days', 
-    value: 7 
+  // Load initial state from localStorage or use default
+  const [timeRange, setTimeRange] = useState<{ type: 'days' | 'hours', value: number }>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return { type: 'days', value: 7 };
+      }
+    }
+    return { type: 'days', value: 7 };
   });
+  
+  // Save to localStorage whenever timeRange changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(timeRange));
+  }, [timeRange]);
   
   const params = timeRange.type === 'hours' 
     ? { hours: timeRange.value }
@@ -159,7 +174,7 @@ export const Dashboard = () => {
         
         {/* Trading Signals */}
         <div className="mb-8">
-          <TradingSignals signals={data.signals} timeRange={timeRange} />
+          <TradingSignals signals={data.signals} records={data.records} timeRange={timeRange} />
         </div>
         
         {/* Charts Grid */}

@@ -1,21 +1,47 @@
 import { useQuery } from '@tanstack/react-query';
-import { calculateTradingSignals, type FetchSentimentParams } from '../services/api';
-import type { SentimentRecord } from '../types';
+import { fetchSentimentData, type FetchSentimentParams } from '../services/api';
+
+// List of common stablecoins to filter out
+const STABLECOINS = [
+  'USDT', 'USDC', 'DAI', 'BUSD', 'TUSD', 'USDD', 'FRAX', 'USDP',
+  'GUSD', 'PYUSD', 'LUSD', 'SUSD', 'USTC', 'UST', 'FDUSD', 'EURT'
+];
 
 export const useSentimentData = (params: FetchSentimentParams = {}) => {
   return useQuery({
     queryKey: ['sentiment', params],
     queryFn: async () => {
-      // For now, return mock data until API is ready
-      // Replace this with actual API call when backend endpoint is available
-      return generateMockData(params.days, params.hours);
+      const data = await fetchSentimentData(params);
+      
+      // Filter out stablecoins from records
+      const filteredRecords = data.records.filter(
+        record => !STABLECOINS.includes(record.symbol.toUpperCase())
+      );
+      
+      // Filter out stablecoins from signals
+      const filteredSignals = Object.fromEntries(
+        Object.entries(data.signals).filter(
+          ([symbol]) => !STABLECOINS.includes(symbol.toUpperCase())
+        )
+      );
+      
+      // Recalculate unique coins after filtering
+      const uniqueCoins = new Set(filteredRecords.map(r => r.symbol)).size;
+      
+      return {
+        ...data,
+        records: filteredRecords,
+        signals: filteredSignals,
+        total_records: filteredRecords.length,
+        unique_coins: uniqueCoins,
+      };
     },
     refetchInterval: 60000, // Refetch every minute
   });
 };
 
-// Mock data generator - Remove this when API is ready
-function generateMockData(days: number = 7, hours?: number) {
+// Mock data generator - Commented out, now using real API
+/* function generateMockData(days: number = 7, hours?: number) {
   // If hours is provided, scale down the data generation
   if (hours !== undefined) {
     days = hours / 24;
@@ -70,5 +96,5 @@ function generateMockData(days: number = 7, hours?: number) {
     total_records: records.length,
     unique_coins: coins.length,
   };
-}
+} */
 
