@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  dashboard:
+    build: .
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
