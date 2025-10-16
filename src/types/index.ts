@@ -7,6 +7,15 @@ export interface SentimentRecord {
   article_title: string;
   source: string;
   relevance: number;
+  url?: string;
+  summary?: string;
+  article?: {
+    id: number;
+    title: string;
+    link: string;
+    published: string;
+    source: string;
+  };
 }
 
 export interface TradingSignal {

@@ -23,6 +23,141 @@ export interface SentimentResponse {
  * Fetch sentiment data from the API
  * If hours is set, it takes priority over days
  */
+// Transform API response to our format
+const transformApiResponse = (apiData: any): SentimentResponse => {
+  console.log('Raw API Response:', JSON.stringify(apiData, null, 2)); // Detailed debug log
+  
+  const records: SentimentRecord[] = [];
+  
+  // Check if we have the expected structure
+  if (apiData.data && apiData.data.sentiments) {
+    console.log('Using new API format (data.sentiments)');
+    // New API format
+    apiData.data.sentiments.forEach((sentiment: any, index: number) => {
+      console.log(`Processing sentiment ${index}:`, {
+        symbol: sentiment.symbol,
+        article_url: sentiment.article_url,
+        article_summary: sentiment.article_summary
+      });
+      
+      const record: SentimentRecord = {
+        symbol: sentiment.symbol,
+        coin_name: sentiment.coinName,
+        sentiment: sentiment.sentiment,
+        date: sentiment.date,
+        explanation: sentiment.explanation,
+        article_title: sentiment.article?.title || 'Unknown Title',
+        source: sentiment.article?.source || 'Unknown Source',
+        relevance: sentiment.relevance,
+        url: sentiment.article?.link,
+        article: sentiment.article
+      };
+      
+      console.log(`Created record ${index}:`, {
+        url: record.url,
+        article_title: record.article_title,
+        source: record.source
+      });
+      
+      records.push(record);
+    });
+  } else if (apiData.sentiments) {
+    console.log('Using direct sentiments format');
+    // Direct sentiments array
+    apiData.sentiments.forEach((sentiment: any, index: number) => {
+      console.log(`Processing sentiment ${index}:`, {
+        symbol: sentiment.symbol,
+        article_url: sentiment.article_url,
+        article_summary: sentiment.article_summary
+      });
+      
+      const record: SentimentRecord = {
+        symbol: sentiment.symbol,
+        coin_name: sentiment.coinName,
+        sentiment: sentiment.sentiment,
+        date: sentiment.date,
+        explanation: sentiment.explanation,
+        article_title: sentiment.article?.title || 'Unknown Title',
+        source: sentiment.article?.source || 'Unknown Source',
+        relevance: sentiment.relevance,
+        url: sentiment.article?.link,
+        article: sentiment.article
+      };
+      
+      console.log(`Created record ${index}:`, {
+        url: record.url,
+        article_title: record.article_title,
+        source: record.source
+      });
+      
+      records.push(record);
+    });
+  } else if (apiData.records) {
+    console.log('Using updated dashboard format with article_url and article_summary');
+    // Updated dashboard format with article_url and article_summary
+    apiData.records.forEach((record: any, index: number) => {
+      console.log(`Processing record ${index}:`, {
+        symbol: record.symbol,
+        article_url: record.article_url,
+        article_summary: record.article_summary
+      });
+      
+      // Create summary from first sentence + "..."
+      let summary = '';
+      if (record.article_summary) {
+        const firstSentence = record.article_summary.split('.')[0];
+        summary = firstSentence + '...';
+      }
+      
+      const transformedRecord: SentimentRecord = {
+        symbol: record.symbol,
+        coin_name: record.coin_name,
+        sentiment: record.sentiment,
+        date: record.date,
+        explanation: record.explanation,
+        article_title: record.article_title,
+        source: record.source,
+        relevance: record.relevance,
+        url: record.article_url,
+        summary: summary
+      };
+      
+      console.log(`Created transformed record ${index}:`, {
+        url: transformedRecord.url,
+        summary: transformedRecord.summary,
+        article_title: transformedRecord.article_title
+      });
+      
+      records.push(transformedRecord);
+    });
+  } else {
+    console.error('Unexpected API response format:', apiData);
+    // Return empty response to prevent crash
+    return {
+      records: [],
+      signals: {},
+      total_records: 0,
+      unique_coins: 0
+    };
+  }
+  
+  console.log('Final records with URLs:', records.map(r => ({ 
+    title: r.article_title, 
+    url: r.url, 
+    summary: r.summary
+  })));
+  
+  // Calculate signals
+  const calculatedSignals = calculateTradingSignals(records);
+  
+  return {
+    records,
+    signals: calculatedSignals,
+    total_records: records.length,
+    unique_coins: new Set(records.map(r => r.symbol)).size
+  };
+};
+
 export const fetchSentimentData = async (params: FetchSentimentParams = {}): Promise<SentimentResponse> => {
   const { days, hours, symbols } = params;
   
@@ -42,7 +177,7 @@ export const fetchSentimentData = async (params: FetchSentimentParams = {}): Pro
   }
   
   const response = await api.get(`/dashboard/sentiment?${queryParams.toString()}`);
-  return response.data;
+  return transformApiResponse(response.data);
 };
 
 /**
