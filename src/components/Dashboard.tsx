@@ -78,7 +78,11 @@ export const Dashboard = () => {
     ? recentRecords.reduce((sum, r) => sum + r.sentiment, 0) / recentRecords.length
     : 0;
   
-  const sentimentTrend = ((recentAvg - avgSentiment) / Math.abs(avgSentiment || 1)) * 100;
+  // Calculate sentiment trend as a percentage change
+  // If avgSentiment is very close to 0, just show the absolute change
+  const sentimentTrend = Math.abs(avgSentiment) < 0.01 
+    ? Math.round((recentAvg - avgSentiment) * 100) // Show absolute change when near zero
+    : Math.round(((recentAvg - avgSentiment) / Math.abs(avgSentiment)) * 100); // Show percentage change
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
