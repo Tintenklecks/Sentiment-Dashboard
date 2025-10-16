@@ -111,10 +111,10 @@ export const Dashboard = () => {
               <button
                 onClick={() => refetch()}
                 disabled={isFetching}
-                className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                className="p-3 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg hover:from-blue-500/30 hover:to-purple-500/30 transition-colors disabled:opacity-50"
                 title="Refresh data"
               >
-                <RefreshCw className={`w-5 h-5 ${isFetching ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-6 h-6 text-blue-400 ${isFetching ? 'animate-spin' : ''}`} />
               </button>
             </div>
           </div>
@@ -159,7 +159,7 @@ export const Dashboard = () => {
         
         {/* Trading Signals */}
         <div className="mb-8">
-          <TradingSignals signals={data.signals} />
+          <TradingSignals signals={data.signals} timeRange={timeRange} />
         </div>
         
         {/* Charts Grid */}

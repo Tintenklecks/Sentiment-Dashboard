@@ -10,7 +10,7 @@ export default defineConfig({
     allowedHosts: ['server.local', '.local', '.puco.ch'],
     proxy: {
       '/v1': {
-        target: 'http://localhost:8000',
+        target: 'http://server.local:8000',
         changeOrigin: true,
       },
     },

@@ -1,8 +1,9 @@
-import { TrendingUp, TrendingDown, Minus, ArrowUp, ArrowDown, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, ArrowUp, ArrowDown, ArrowRight, LineChart } from 'lucide-react';
 import type { TradingSignal } from '../types';
 
 interface Props {
   signals: Record<string, TradingSignal>;
+  timeRange: { type: 'days' | 'hours', value: number };
 }
 
 const SignalBadge = ({ signal }: { signal: TradingSignal['signal'] }) => {
@@ -49,7 +50,22 @@ const StrengthBar = ({ strength }: { strength: number }) => {
   );
 };
 
-export const TradingSignals = ({ signals }: Props) => {
+export const TradingSignals = ({ signals, timeRange }: Props) => {
+  // Calculate Unix timestamp for TradingView link
+  const getUnixTimestamp = () => {
+    const now = Math.floor(Date.now() / 1000); // Current time in seconds
+    const secondsToSubtract = timeRange.type === 'hours' 
+      ? timeRange.value * 60 * 60 
+      : timeRange.value * 24 * 60 * 60;
+    return now - secondsToSubtract;
+  };
+  
+  // Generate TradingView URL for a coin
+  const getTradingViewUrl = (symbol: string) => {
+    const timestamp = getUnixTimestamp();
+    const pair = `BINANCE:${symbol}USDT`;
+    return `https://www.tradingview.com/chart/xyeQ2hIE/?symbol=${encodeURIComponent(pair)}&interval=D&time=${timestamp}`;
+  };
   // Group signals by type
   const strongBuys = Object.values(signals).filter(s => s.signal === 'STRONG BUY');
   const buys = Object.values(signals).filter(s => s.signal === 'BUY');
@@ -85,9 +101,20 @@ export const TradingSignals = ({ signals }: Props) => {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="mb-2">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-lg font-bold text-white">{item.symbol}</span>
-                      <span className="text-xs text-gray-400">{item.coin_name}</span>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-bold text-white">{item.symbol}</span>
+                        <span className="text-xs text-gray-400">{item.coin_name}</span>
+                      </div>
+                      <a
+                        href={getTradingViewUrl(item.symbol)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-3 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg hover:from-blue-500/30 hover:to-purple-500/30 transition-colors flex items-center justify-center"
+                        title="View on TradingView"
+                      >
+                        <LineChart className="w-6 h-6 text-blue-400" />
+                      </a>
                     </div>
                     <SignalBadge signal={item.signal} />
                   </div>
